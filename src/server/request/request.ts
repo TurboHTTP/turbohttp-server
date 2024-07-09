@@ -13,6 +13,9 @@ export class Request extends Readable {
     #headers: Record<string, string | string[]>;
     #cookies: Record<string, string>;
     #body: Buffer | null = null;
+    #socket: {
+        remoteAddress?: string
+    }
 
     constructor(request: TurboRawRequest) {
         super();
@@ -21,6 +24,7 @@ export class Request extends Readable {
         this.#headers = request.headers;
         const { path, query } = this.#parseUrl(this.#url, this.#headers['host'] as string);
         this.#path = path;
+        this.#socket = request.socket
         this.#query = query;
         this.#cookies = this.#parseCookies(this.#headers['cookie']?.toString() || '');
     }
@@ -155,5 +159,25 @@ export class Request extends Readable {
             this.on('end', () => resolve(Buffer.concat(chunks)));
             this.on('error', reject);
         });
+    }
+
+    /**
+     * Gets the client's IP address.
+     * @returns {string} The client's IP address.
+     */
+    getClientIp(): string {
+        return this.#headers['x-forwarded-for']
+            ? (this.#headers['x-forwarded-for'] as string).split(',')[0].trim()
+            : this.#socket.remoteAddress || '';
+    }
+
+    /**
+     * Gets the proxy IP address.
+     * @returns {string} The proxy IP address, or an empty string if no proxy is used.
+     */
+    getProxyIp(): string {
+        return this.#headers['x-forwarded-for']
+            ? this.#socket.remoteAddress || ''
+            : '';
     }
 }
