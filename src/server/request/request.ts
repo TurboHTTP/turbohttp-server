@@ -1,6 +1,5 @@
 import { Readable } from "node:stream";
 import { parse as parseQuery } from 'node:querystring';
-import { parseCookies } from "../../utils/parseCookies";
 import { TurboRawRequest, type TurboParsedUrlQuery } from "../../types/request";
 
 /**
@@ -22,7 +21,7 @@ export class Request extends Readable {
         const { path, query } = this.#parseUrl(this.#url, this.#headers['host'] as string);
         this.#path = path;
         this.#query = query;
-        this.#cookies = parseCookies(this.#headers['cookie']?.toString() || '');
+        this.#cookies = this.#parseCookies(this.#headers['cookie']?.toString() || '');
     }
 
     get method(): string {
@@ -58,5 +57,61 @@ export class Request extends Readable {
         const path = parsedUrl.pathname;
         const query = parseQuery(parsedUrl.searchParams.toString()) as TurboParsedUrlQuery;
         return { path, query };
+    }
+
+    /**
+     * Parses cookies from the Cookie header string.
+     * @param cookieHeader - The Cookie header string.
+     * @returns An object representing the parsed cookies.
+     */
+    #parseCookies(cookieHeader: string): Record<string, string> {
+        const cookies: Record<string, string> = {};
+        if (!cookieHeader) return cookies;
+
+        const pairs = cookieHeader.split(';');
+        for (const pair of pairs) {
+            const [name, ...value] = pair.trim().split('=');
+            if (name && value.length) {
+                cookies[name] = value.join('=');
+            }
+        }
+
+        return cookies;
+    }
+
+    /**
+     * Signs a cookie value using the provided secret.
+     * @param value - The value to sign.
+     * @param secret - The secret to use for signing.
+     * @returns The signed cookie value.
+     */
+    signCookie(value: string, secret: string): string {
+        const hmac = this.#createHmac(secret, value);
+        return `s:${value}.${hmac}`;
+    }
+
+    /**
+     * Unsigns a signed cookie value using the provided secret.
+     * @param signedValue - The signed cookie value to unsign.
+     * @param secret - The secret to use for unsigning.
+     * @returns The original value if the signature is valid, or false if invalid.
+     */
+    unsignCookie(signedValue: string, secret: string): string | false {
+        const [value, hmac] = signedValue.slice(2).split('.');
+        if (this.#createHmac(secret, value) === hmac) {
+            return value;
+        }
+        return false;
+    }
+
+    /**
+     * Creates an HMAC hash using the provided secret and value.
+     * @param secret - The secret to use for hashing.
+     * @param value - The value to hash.
+     * @returns The HMAC hash.
+     */
+    #createHmac(secret: string, value: string): string {
+        const crypto = require('crypto');
+        return crypto.createHmac('sha256', secret).update(value).digest('hex');
     }
 }
