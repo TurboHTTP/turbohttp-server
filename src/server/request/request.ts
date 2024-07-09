@@ -13,6 +13,9 @@ export class Request extends Readable {
     #headers: Record<string, string | string[]>;
     #cookies: Record<string, string>;
     #body: Buffer | null = null;
+    #socket: {
+        remoteAddress?: string
+    }
 
     constructor(request: TurboRawRequest) {
         super();
@@ -21,6 +24,7 @@ export class Request extends Readable {
         this.#headers = request.headers;
         const { path, query } = this.#parseUrl(this.#url, this.#headers['host'] as string);
         this.#path = path;
+        this.#socket = request.socket
         this.#query = query;
         this.#cookies = this.#parseCookies(this.#headers['cookie']?.toString() || '');
     }
