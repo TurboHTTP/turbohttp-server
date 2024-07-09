@@ -12,6 +12,7 @@ export class Request extends Readable {
     #query: TurboParsedUrlQuery;
     #headers: Record<string, string | string[]>;
     #cookies: Record<string, string>;
+    #body: Buffer | null = null;
 
     constructor(request: TurboRawRequest) {
         super();
@@ -113,5 +114,46 @@ export class Request extends Readable {
     #createHmac(secret: string, value: string): string {
         const crypto = require('crypto');
         return crypto.createHmac('sha256', secret).update(value).digest('hex');
+    }
+
+    /**
+     * Parses the body as a raw buffer.
+     * @returns A promise that resolves to the raw buffer.
+     */
+    async parseBodyAsBuffer(): Promise<Buffer> {
+        if (this.#body) return this.#body;
+        this.#body = await this.#getRawBody();
+        return this.#body;
+    }
+
+    /**
+     * Parses the body as a JSON object.
+     * @returns A promise that resolves to the parsed JSON object.
+     */
+    async parseBodyAsJson<T = any>(): Promise<T> {
+        const buffer = await this.parseBodyAsBuffer();
+        return JSON.parse(buffer.toString());
+    }
+
+    /**
+     * Parses the body as URL-encoded data.
+     * @returns A promise that resolves to the parsed URL-encoded object.
+     */
+    async parseBodyAsUrlEncoded(): Promise<Record<string, any>> {
+        const buffer = await this.parseBodyAsBuffer();
+        return parseQuery(buffer.toString());
+    }
+
+    /**
+     * Helper method to read the raw body from the request.
+     * @returns A promise that resolves to the raw buffer.
+     */
+    #getRawBody(): Promise<Buffer> {
+        return new Promise((resolve, reject) => {
+            const chunks: Buffer[] = [];
+            this.on('data', chunk => chunks.push(Buffer.from(chunk)));
+            this.on('end', () => resolve(Buffer.concat(chunks)));
+            this.on('error', reject);
+        });
     }
 }
