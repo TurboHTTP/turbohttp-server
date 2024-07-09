@@ -12,6 +12,7 @@ export class Request extends Readable {
     #query: TurboParsedUrlQuery;
     #headers: Record<string, string | string[]>;
     #cookies: Record<string, string>;
+    #body: Buffer | null = null;
 
     constructor(request: TurboRawRequest) {
         super();
