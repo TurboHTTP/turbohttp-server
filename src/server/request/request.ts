@@ -160,4 +160,24 @@ export class Request extends Readable {
             this.on('error', reject);
         });
     }
+
+    /**
+     * Gets the client's IP address.
+     * @returns {string} The client's IP address.
+     */
+    getClientIp(): string {
+        return this.#headers['x-forwarded-for']
+            ? (this.#headers['x-forwarded-for'] as string).split(',')[0].trim()
+            : this.#socket.remoteAddress || '';
+    }
+
+    /**
+     * Gets the proxy IP address.
+     * @returns {string} The proxy IP address, or an empty string if no proxy is used.
+     */
+    getProxyIp(): string {
+        return this.#headers['x-forwarded-for']
+            ? this.#socket.remoteAddress || ''
+            : '';
+    }
 }
