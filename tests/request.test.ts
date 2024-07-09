@@ -190,5 +190,26 @@ describe('Request', () => {
             request = new Request(rawRequest);
             expect(request.cookies).toEqual({});
         });
+
+
     });
+
+    describe('IP Address Extraction', () => {
+        it('should extract client IP address correctly', () => {
+            expect(request.getClientIp()).toBe('127.0.0.1')
+        })
+
+        it('should extract proxy IP address correctly', () => {
+            rawRequest.headers['x-forwarded-for'] = '192.168.1.1'
+            request = new Request(rawRequest)
+            expect(request.getProxyIp()).toBe('127.0.0.1')
+        })
+
+        it('should handle multiple x-forwarded-for IP addresses correctly', () => {
+            rawRequest.headers['x-forwarded-for'] = '192.168.1.1, 192.168.1.2';
+            request = new Request(rawRequest);
+            expect(request.getClientIp()).toBe('192.168.1.1');
+        });
+    })
+
 })
