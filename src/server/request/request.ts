@@ -59,6 +59,86 @@ export class Request extends Readable {
         return this.#cookies;
     }
 
+    /**
+     * Sets the request method.
+     * @param method - The HTTP method to set.
+     */
+    setMethod(method: string): void {
+        this.#method = this.#parseMethod(method);
+    }
+
+    /**
+     * Sets the request URL.
+     * @param url - The URL to set.
+     */
+    setUrl(url: string): void {
+        this.#url = url;
+        const { path, query } = this.#parseUrl(this.#url, this.#headers['host'] as string);
+        this.#path = path;
+        this.#query = query;
+    }
+
+    /**
+     * Sets the request path.
+     * @param path - The path to set.
+     */
+    setPath(path: string): void {
+        this.#path = path;
+    }
+
+    /**
+     * Sets the request query.
+     * @param query - The query to set.
+     */
+    setQuery(query: TurboParsedUrlQuery): void {
+        this.#query = query;
+    }
+
+    /**
+     * Sets the request headers.
+     * @param headers - The headers to set.
+     */
+    setHeaders(headers: Record<string, string | string[]>): void {
+        this.#headers = headers;
+    }
+
+    /**
+     * Sets the request cookies.
+     * @param cookies - The cookies to set.
+     */
+    setCookies(cookies: Record<string, string>): void {
+        this.#cookies = cookies;
+    }
+
+    /**
+     * Registers a middleware function.
+     * @param middleware - The middleware function to register.
+     */
+    use(middleware: Middleware): void {
+        this.#middlewares.push(middleware);
+    }
+
+    /**
+     * Executes registered middleware functions.
+     * @param done - The callback to execute after all middleware functions have run.
+     */
+    async executeMiddlewares(done: () => void): Promise<void> {
+        const executeMiddleware = async (index: number): Promise<void> => {
+            if (index < this.#middlewares.length) {
+                const middleware = this.#middlewares[index];
+                await middleware(this, () => executeMiddleware(index + 1));
+            } else {
+                done();
+            }
+        };
+
+        try {
+            await executeMiddleware(0);
+        } catch (error) {
+            throw error;
+        }
+    }
+
     #parseMethod(method?: string): string {
         return method?.toUpperCase() || '';
     }
