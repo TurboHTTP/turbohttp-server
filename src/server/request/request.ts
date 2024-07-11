@@ -21,6 +21,7 @@ export class Request extends Readable {
     #socket: {
         remoteAddress?: string
     }
+    #middlewares: Middleware[] = []
 
     constructor(request: TurboRawRequest) {
         super();
