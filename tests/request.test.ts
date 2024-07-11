@@ -1,5 +1,5 @@
 import { TurboRawRequest } from "../src/types/request";
-import { Request } from "../src/server/request/request";
+import {Middleware, Request} from "../src/server/request";
 
 describe('Request', () => {
     let rawRequest: TurboRawRequest
@@ -22,6 +22,56 @@ describe('Request', () => {
             on: jest.fn()
         }
         request = new Request(rawRequest)
+    })
+
+    describe('Middleware Integration', () => {
+        it('should execute registered middlewares in sequence', async () => {
+            const middleware1: Middleware = async (req, next) => {
+                req.headers['middleware1'] = 'executed';
+                await next();
+            };
+
+            const middleware2: Middleware = async (req, next) => {
+                req.headers['middleware2'] = 'executed';
+                await next();
+            };
+
+            request.use(middleware1);
+            request.use(middleware2);
+
+            await request.executeMiddlewares(() => {
+                expect(request.headers['middleware1']).toBe('executed');
+                expect(request.headers['middleware2']).toBe('executed');
+            });
+        });
+
+        it('should allow middleware to modify request properties', async () => {
+            const middleware: Middleware = async (req, next) => {
+                req.setUrl('http://localhost/modified');
+                await next();
+            };
+
+            request.use(middleware);
+
+            await request.executeMiddlewares(() => {
+                expect(request.url).toBe('http://localhost/modified');
+            });
+        });
+
+        it('should handle errors in middleware', async () => {
+            const errorMiddleware: Middleware = async (req, next) => {
+                throw new Error('Middleware error');
+            };
+
+            request.use(errorMiddleware);
+
+            try {
+                await request.executeMiddlewares(() => {});
+            } catch (error: any) {
+                expect(error).toBeInstanceOf(Error);
+                expect(error.message).toBe('Middleware error');
+            }
+        });
     })
 
     describe('Request Initialization', () => {
