@@ -3,6 +3,11 @@ import { parse as parseQuery } from 'node:querystring';
 import { TurboRawRequest, type TurboParsedUrlQuery } from "../../types/request";
 
 /**
+ * Represents a middleware function.
+ */
+export type Middleware = (req: Request, next: () => Promise<void>) => Promise<void>
+
+/**
  * Represents an HTTP request.
  */
 export class Request extends Readable {
